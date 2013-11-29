@@ -2,7 +2,7 @@ Process memory library
 ==============
 
 A library that simplifies the process of reading and writing to
-the memory of another process a .NET langauge.
+the memory of another process in a .NET langauge.
 
 Below is an example of a program which simply reads 16 bytes from
 a address 0x1D8153A4 in the spotify process.
