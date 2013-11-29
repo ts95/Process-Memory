@@ -4,7 +4,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
-namespace MaxSvett.Memory
+namespace Avaritis.Memory
 {
     /// <summary>
     /// Use this class to read memory from another process running
@@ -47,7 +47,7 @@ namespace MaxSvett.Memory
 
             // Remove ".exe" from the process name passed if it contains ".exe".
             if (Regex.Match(processName, "\\w+\\.exe").Success)
-                processName = Regex.Match(processName, "\\w+[^\\.exe]").Groups[0].Value;
+                processName = Regex.Match(processName, "(!?\\w+)\\.exe").Groups[1].Value;
 
             this.access = access;
             Process[] processes = Process.GetProcessesByName(processName);
@@ -337,9 +337,6 @@ namespace MaxSvett.Memory
             {
                 if (array == null || array.Length == 0)
                     return false;
-
-                // I can't think of a more elegant way to do this...
-                // At least it works.
 
                 int typeSize = Marshal.SizeOf(typeof(T));
                 int arraySize = typeSize * array.Length;

@@ -1,7 +1,11 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual C# Express 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessMemory", "ProcessMemory\ProcessMemory.csproj", "{17C86213-6549-4BD9-9720-1ED16CFA1DB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessMemoryTests", "ProcessMemoryTests\ProcessMemoryTests.csproj", "{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +17,10 @@ Global
 		{17C86213-6549-4BD9-9720-1ED16CFA1DB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17C86213-6549-4BD9-9720-1ED16CFA1DB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{17C86213-6549-4BD9-9720-1ED16CFA1DB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

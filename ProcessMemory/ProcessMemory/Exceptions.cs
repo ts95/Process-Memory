@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MaxSvett.Memory
+namespace Avaritis.Memory
 {
     internal class InvalidAccessException : Exception
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace MaxSvett
+namespace Avaritis.Memory
 {
     public class Kernel32
     {
