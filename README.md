@@ -16,7 +16,7 @@ unsafe class Program
 {
 	static void Main(string[] args)
 	{
-		var pm = new ProcessMemory("program.exe", Access.Read);
+		var pm = new ProcessMemory("program.exe", AccessLevel.Read);
 
 		// The address the library will read from
 		long address = 0x1D8153A4;
@@ -43,7 +43,7 @@ unsafe class Program
 {
 	static void Main(string[] args)
 	{
-		// Implicitly using Access.ReadAndWrite
+		// Implicitly using AccessLevel.All
 		var pm = new ProcessMemory("program.exe");
 
 		long address = 0x1D8153A4;

@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Avaritis.Memory;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace ProcessMemoryTests
 {

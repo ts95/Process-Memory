@@ -21,36 +21,35 @@ namespace Avaritis.Memory
         #region Variables
 
         private IntPtr hWnd, hProcess;
-        private Access access;
+        private AccessLevel access;
 
         #endregion
 
-        #region Constructor and Destoructor
+        #region Constructor and Destructor
 
         public ProcessMemory(
             string className,
             string windowName,
-            Access access = Access.ReadAndWrite)
+            AccessLevel access = AccessLevel.All)
         {
-            this.Disposed = false;
             this.access = access;
-            this.hWnd = User32.FindWindowW(className, windowName);
+            this.hWnd = NativeMethods.FindWindowW(className, windowName);
             this.hProcess = GetProcessHandleFromWindowHandle(hWnd);
         }
 
         public ProcessMemory(
             string processName,
             int processIndex = 0,
-            Access access = Access.ReadAndWrite)
+            AccessLevel access = AccessLevel.All)
         {
-            this.Disposed = false;
-
             // Remove ".exe" from the process name passed if it contains ".exe".
             if (Regex.Match(processName, "\\w+\\.exe").Success)
                 processName = Regex.Match(processName, "(!?\\w+)\\.exe").Groups[1].Value;
 
             this.access = access;
+            
             Process[] processes = Process.GetProcessesByName(processName);
+            
             if (processes.Length > 0)
             {
                 this.hWnd = processes[processIndex].MainWindowHandle;
@@ -65,17 +64,12 @@ namespace Avaritis.Memory
         ~ProcessMemory()
         {
             if (hProcess != IntPtr.Zero)
-                Kernel32.CloseHandle(hProcess);
+                NativeMethods.CloseHandle(hProcess);
         }
 
         #endregion
 
         #region Getters and Setters
-
-        public bool Disposed
-        {
-            get; private set;
-        }
 
         /// <summary>
         /// Returns true if the process still runs.
@@ -103,7 +97,7 @@ namespace Avaritis.Memory
             get { return this.hProcess; }
         }
 
-        public Access Access
+        public AccessLevel Access
         {
             get
             {
@@ -131,21 +125,20 @@ namespace Avaritis.Memory
             IntPtr hProcess = IntPtr.Zero;
 
             int pID = 0;
-            User32.GetWindowThreadProcessId(hWnd, &pID);
+            NativeMethods.GetWindowThreadProcessId(hWnd, &pID);
 
-            switch (this.access)
+            switch (access)
             {
-                case Access.ReadAndWrite:
-                    hProcess = Kernel32.OpenProcess(
-                        Kernel32.PROCESS_ALL_ACCESS, false, pID);
+                case AccessLevel.Read:
+                    hProcess = NativeMethods.OpenProcess(NativeMethods.PROCESS_VM_READ, false, pID);
                     break;
-                case Access.Read:
-                    hProcess = Kernel32.OpenProcess(
-                        Kernel32.PROCESS_VM_READ, false, pID);
+
+                case AccessLevel.Write:
+                    hProcess = NativeMethods.OpenProcess(NativeMethods.PROCESS_VM_WRITE, false, pID);
                     break;
-                case Access.Write:
-                    hProcess = Kernel32.OpenProcess(
-                        Kernel32.PROCESS_VM_WRITE, false, pID);
+
+                default:
+                    hProcess = NativeMethods.OpenProcess(NativeMethods.PROCESS_ALL_ACCESS, false, pID);
                     break;
             }
 
@@ -169,6 +162,29 @@ namespace Avaritis.Memory
             return byteArray;
         }
 
+        private void VirtualProtectExWithAccessLevel(long address, int size, out int oldProtectType)
+        {
+            switch (access)
+            {
+                case AccessLevel.Read:
+                    VirtualProtectEx(address, size, NativeMethods.PROCESS_VM_READ, out oldProtectType);
+                    break;
+
+                case AccessLevel.Write:
+                    VirtualProtectEx(address, size, NativeMethods.PROCESS_VM_WRITE, out oldProtectType);
+                    break;
+
+                default:
+                    VirtualProtectEx(address, size, NativeMethods.PROCESS_ALL_ACCESS, out oldProtectType);
+                    break;
+            }
+        }
+
+        private void VirtualProtectEx(long address, int size, int newProtectionType, out int oldProtectionType)
+        {
+            if (!NativeMethods.VirtualProtectEx(hProcess, new IntPtr(address), size, newProtectionType, out oldProtectionType))
+                throw new LastWin32Exception();
+        }
         #endregion
 
         #region Read from memory
@@ -183,12 +199,22 @@ namespace Avaritis.Memory
         /// <param name="buffer"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public bool Read(long address, void* buffer, int size)
+        public void Read(long address, void* buffer, int size)
         {
-            if (access == Access.Read || access == Access.ReadAndWrite)
-                return Kernel32.ReadProcessMemory(hProcess, new IntPtr(address), buffer, size, null);
-            else
-                throw new InvalidAccessException("Can not read with Access.Write");
+            switch (access)
+            {
+                case AccessLevel.Read:
+                case AccessLevel.All:
+                    int oldProtectType;
+                    VirtualProtectExWithAccessLevel(address, size, out oldProtectType);
+                    if (!NativeMethods.ReadProcessMemory(hProcess, new IntPtr(address), buffer, size, null))
+                        throw new LastWin32Exception();
+                    VirtualProtectEx(address, size, oldProtectType, out oldProtectType);
+                    break;
+
+                default:
+                    throw new InvalidAccessException("Can not write with Access.Read");
+            }
         }
 
         /// <summary>
@@ -200,19 +226,11 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public T Read<T>(long address) where T : struct
         {
-            if (access == Access.Read || access == Access.ReadAndWrite)
+            int size = Marshal.SizeOf(typeof(T));
+            fixed (byte* bytePtr = new byte[size])
             {
-                int size = Marshal.SizeOf(typeof(T));
-                fixed (byte* bytePtr = new byte[size])
-                {
-                    Kernel32.ReadProcessMemory(hProcess, new IntPtr(address), bytePtr, size, null);
-                    IntPtr ptr = new IntPtr(bytePtr);
-                    return (T)Marshal.PtrToStructure(ptr, typeof(T));
-                }
-            }
-            else
-            {
-                throw new InvalidAccessException("Can not read with Access.Write");
+                Read(address, bytePtr, size);
+                return (T)Marshal.PtrToStructure(new IntPtr(bytePtr), typeof(T));
             }
         }
 
@@ -244,26 +262,19 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public T[] ReadArray<T>(long address, int count, int typeSize) where T : struct
         {
-            if (access == Access.Read || access == Access.ReadAndWrite)
-            {
-                int arraySize = count * typeSize;
+            int arraySize = count * typeSize;
 
-                fixed (byte* bytePtr = new byte[arraySize])
-                {
-                    Kernel32.ReadProcessMemory(hProcess, new IntPtr(address), bytePtr, arraySize, null);
-                    T[] array = new T[count];
-                    IntPtr ptr = new IntPtr(bytePtr);
-                    for (int i = 0; i < count; i++)
-                    {
-                        array[i] = (T)Marshal.PtrToStructure(ptr, typeof(T));
-                        ptr = new IntPtr(ptr.ToInt64() + typeSize);
-                    }
-                    return array;
-                }
-            }
-            else
+            fixed (byte* bytePtr = new byte[arraySize])
             {
-                throw new InvalidAccessException("Can not read with Access.Write");
+                Read(address, bytePtr, arraySize);
+                T[] array = new T[count];
+                IntPtr ptr = new IntPtr(bytePtr);
+                for (int i = 0; i < count; i++)
+                {
+                    array[i] = (T)Marshal.PtrToStructure(ptr, typeof(T));
+                    ptr = new IntPtr(ptr.ToInt64() + typeSize);
+                }
+                return array;
             }
         }
 
@@ -271,7 +282,7 @@ namespace Avaritis.Memory
         /// Reads an ASCII string from memory.
         /// </summary>
         /// <param name="address"></param>
-        /// <param name="count"></param>
+        /// <param name="count">Number of bytes to read</param>
         /// <returns></returns>
         public string ReadString(long address, int count)
         {
@@ -282,19 +293,12 @@ namespace Avaritis.Memory
         /// Reads a string from memory with the specified encoding.
         /// </summary>
         /// <param name="address"></param>
-        /// <param name="count"></param>
+        /// <param name="count">Number of bytes to read</param>
         /// <param name="encoding"></param>
         /// <returns></returns>
         public string ReadString(long address, int count, Encoding encoding)
         {
-            if (access == Access.Read || access == Access.ReadAndWrite)
-            {
-                return encoding.GetString(ReadArray<byte>(address, count, 1));
-            }
-            else
-            {
-                throw new InvalidAccessException("Can not read with Access.Write");
-            }
+            return encoding.GetString(ReadArray<byte>(address, count));
         }
 
         #endregion
@@ -309,12 +313,22 @@ namespace Avaritis.Memory
         /// <param name="buffer"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public bool Write(long address, void* buffer, int size)
+        public void Write(long address, void* buffer, int size)
         {
-            if (access == Access.Write || access == Access.ReadAndWrite)
-                return Kernel32.WriteProcessMemory(hProcess, new IntPtr(address), buffer, size, null);
-            else
-                throw new InvalidAccessException("Can not write with Access.Read");
+            switch (access)
+            {
+                case AccessLevel.Write:
+                case AccessLevel.All:
+                    int oldProtectType;
+                    VirtualProtectExWithAccessLevel(address, size, out oldProtectType);
+                    if (!NativeMethods.WriteProcessMemory(hProcess, new IntPtr(address), buffer, size, null))
+                        throw new LastWin32Exception();
+                    VirtualProtectEx(address, size, oldProtectType, out oldProtectType);
+                    break;
+
+                default:
+                    throw new InvalidAccessException("Can not write with Access.Read");
+            }
         }
 
         /// <summary>
@@ -324,21 +338,13 @@ namespace Avaritis.Memory
         /// <param name="address"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool Write<T>(long address, T data) where T : struct
+        public void Write<T>(long address, T data) where T : struct
         {
-            if (access == Access.Write || access == Access.ReadAndWrite)
-            {
-                int size = Marshal.SizeOf(typeof(T));
-                IntPtr ptr = Marshal.AllocHGlobal(size);
-                Marshal.StructureToPtr(data, ptr, true);
-                bool result = Write(address, ptr.ToPointer(), size);
-                Marshal.FreeHGlobal(ptr);
-                return result;
-            }
-            else
-            {
-                throw new InvalidAccessException("Can not write with Access.Read");
-            }
+            int size = Marshal.SizeOf(typeof(T));
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(data, ptr, true);
+            Write(address, ptr.ToPointer(), size);
+            Marshal.FreeHGlobal(ptr);
         }
 
         /// <summary>
@@ -348,36 +354,30 @@ namespace Avaritis.Memory
         /// <param name="address"></param>
         /// <param name="array"></param>
         /// <returns></returns>
-        public bool WriteArray<T>(long address, T[] array) where T : struct
+        public void WriteArray<T>(long address, T[] array) where T : struct
         {
-            if (access == Access.Write || access == Access.ReadAndWrite)
+            if (array == null || array.Length == 0)
+                throw new ArgumentException("Invalid array (either empty or null)");
+
+            int typeSize = Marshal.SizeOf(typeof(T));
+            int arraySize = typeSize * array.Length;
+
+            byte[] byteArray = new byte[arraySize];
+
+            int offset = 0;
+            foreach (T type in array)
             {
-                if (array == null || array.Length == 0)
-                    return false;
-
-                int typeSize = Marshal.SizeOf(typeof(T));
-                int arraySize = typeSize * array.Length;
-                
-                byte[] byteArray = new byte[arraySize];
-
-                int offset = 0;
-                foreach (T type in array)
-                {
-                    byte[] typeBytes = GetBytes<T>(type);
-                    Array.Copy(typeBytes, 0, byteArray, offset, typeSize);
-                    offset += typeSize;
-                }
-
-                fixed (byte* bytePtr = new byte[arraySize])
-                {
-                    for (int i = 0; i < arraySize; i++)
-                        bytePtr[i] = byteArray[i];
-                    return Write(address, bytePtr, arraySize);
-                }
+                byte[] typeBytes = GetBytes<T>(type);
+                Array.Copy(typeBytes, 0, byteArray, offset, typeSize);
+                offset += typeSize;
             }
-            else
+
+            fixed (byte* bytePtr = new byte[arraySize])
             {
-                throw new InvalidAccessException("Can not write with Access.Read");
+                for (int i = 0; i < arraySize; i++)
+                    bytePtr[i] = byteArray[i];
+
+                Write(address, bytePtr, arraySize);
             }
         }
 
@@ -387,9 +387,9 @@ namespace Avaritis.Memory
         /// <param name="address"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public bool WriteString(long address, string text)
+        public void WriteString(long address, string text)
         {
-            return WriteString(address, text, Encoding.ASCII);
+            WriteString(address, text, Encoding.ASCII);
         }
 
         /// <summary>
@@ -399,16 +399,9 @@ namespace Avaritis.Memory
         /// <param name="text"></param>
         /// <param name="encoding"></param>
         /// <returns></returns>
-        public bool WriteString(long address, string text, Encoding encoding)
+        public void WriteString(long address, string text, Encoding encoding)
         {
-            if (access == Access.Write || access == Access.ReadAndWrite)
-            {
-                return WriteArray(address, encoding.GetBytes(text));
-            }
-            else
-            {
-                throw new InvalidAccessException("Can not write with Access.Read");
-            }
+            WriteArray(address, encoding.GetBytes(text));
         }
 
         #endregion
@@ -418,14 +411,17 @@ namespace Avaritis.Memory
     /// This enum specifies the access level used
     /// in the ProcessMemory class.
     /// 
-    /// ReadAndWrite grants access for both reading and writing to memory.
+    /// All grants access for both reading and writing to memory.
     /// Read only grants access for reading to memory.
     /// Write only grants access for writing to memory.
     /// </summary>
-    public enum Access
+    public enum AccessLevel : byte
     {
-        ReadAndWrite,
+        /// <summary>Equivalent to: PROCESS_ALL_ACCESS</summary>
+        All,
+        /// <summary>Equivalent to: PROCESS_VM_READ</summary>
         Read,
+        /// <summary>Equivalent to: PROCESS_VM_WRITE</summary>
         Write
     }
 }
