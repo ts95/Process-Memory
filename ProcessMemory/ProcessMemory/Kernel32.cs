@@ -3,14 +3,14 @@ using System.Runtime.InteropServices;
 
 namespace Avaritis.Memory
 {
-    public class Kernel32
+    internal class Kernel32
     {
         public const int PROCESS_ALL_ACCESS = 0x1F0FFF;
         public const int PROCESS_VM_READ = 0x0010;
         public const int PROCESS_VM_WRITE = 0x0020;
 
         [DllImport("Kernel32.dll")]
-        public static unsafe extern bool ReadProcessMemory(
+        internal static unsafe extern bool ReadProcessMemory(
             IntPtr hProcess,
             IntPtr lpBaseAddress,
             void* lpBuffer,
@@ -18,7 +18,7 @@ namespace Avaritis.Memory
             int* lpNumberOfBytesRead);
 
         [DllImport("Kernel32.dll")]
-        public static unsafe extern bool WriteProcessMemory(
+        internal static unsafe extern bool WriteProcessMemory(
             IntPtr hProcess,
             IntPtr lpBaseAddress,
             void* lpBuffer,
@@ -26,12 +26,12 @@ namespace Avaritis.Memory
             int* lpNumberOfBytesWritten);
 
         [DllImport("Kernel32.dll")]
-        public static extern IntPtr OpenProcess(
+        internal static extern IntPtr OpenProcess(
             int dwDesiredAccess,
             bool bInheritHandle,
             int dwProcessId);
 
         [DllImport("Kernel32.dll")]
-        public static extern bool CloseHandle(IntPtr hObject);
+        internal static extern bool CloseHandle(IntPtr hObject);
     }
 }

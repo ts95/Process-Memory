@@ -16,7 +16,7 @@ namespace Avaritis.Memory
     /// Note that this class is "unsafe", if you're going to use it you
     /// will have to compile the program with /unsafe.
     /// </summary>
-    public unsafe class ProcessMemory : IDisposable
+    public unsafe class ProcessMemory
     {
         #region Variables
 
@@ -30,18 +30,18 @@ namespace Avaritis.Memory
         public ProcessMemory(
             string className,
             string windowName,
-            Access access = Access.AllAccess)
+            Access access = Access.ReadAndWrite)
         {
             this.Disposed = false;
             this.access = access;
-            this.hWnd = User32.FindWindow(className, windowName);
+            this.hWnd = User32.FindWindowW(className, windowName);
             this.hProcess = GetProcessHandleFromWindowHandle(hWnd);
         }
 
         public ProcessMemory(
             string processName,
             int processIndex = 0,
-            Access access = Access.AllAccess)
+            Access access = Access.ReadAndWrite)
         {
             this.Disposed = false;
 
@@ -60,6 +60,12 @@ namespace Avaritis.Memory
             {
                 throw new IndexOutOfRangeException(string.Format("No \"{0}\" process found.", processName));
             }
+        }
+
+        ~ProcessMemory()
+        {
+            if (hProcess != IntPtr.Zero)
+                Kernel32.CloseHandle(hProcess);
         }
 
         #endregion
@@ -129,7 +135,7 @@ namespace Avaritis.Memory
 
             switch (this.access)
             {
-                case Access.AllAccess:
+                case Access.ReadAndWrite:
                     hProcess = Kernel32.OpenProcess(
                         Kernel32.PROCESS_ALL_ACCESS, false, pID);
                     break;
@@ -170,9 +176,8 @@ namespace Avaritis.Memory
         /// <summary>
         /// The native read method. This method directly
         /// calls ReadProcessMemory() from Kernel32.dll.
-        /// You should use the generic read method as this
-        /// one only complicates the code and makes it
-        /// less readable.
+        /// You should use the Read&lt;T&gt; method instead
+        /// of this method.
         /// </summary>
         /// <param name="address"></param>
         /// <param name="buffer"></param>
@@ -180,21 +185,22 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public bool Read(long address, void* buffer, int size)
         {
-            if (access == Access.Read || access == Access.AllAccess)
+            if (access == Access.Read || access == Access.ReadAndWrite)
                 return Kernel32.ReadProcessMemory(hProcess, new IntPtr(address), buffer, size, null);
             else
                 throw new InvalidAccessException("Can not read with Access.Write");
         }
 
         /// <summary>
-        /// Generic read method. Any struct can be used.
+        /// Generic read method.
+        /// Reads a struct from memory.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="address"></param>
         /// <returns></returns>
         public T Read<T>(long address) where T : struct
         {
-            if (access == Access.Read || access == Access.AllAccess)
+            if (access == Access.Read || access == Access.ReadAndWrite)
             {
                 int size = Marshal.SizeOf(typeof(T));
                 fixed (byte* bytePtr = new byte[size])
@@ -210,6 +216,17 @@ namespace Avaritis.Memory
             }
         }
 
+        /// <summary>
+        /// Generic read array method.
+        /// Reads an array of structs from memory.
+        /// 
+        /// <b>This overload of ReadArray figures out the type
+        /// size by using <c>Marshal.Sizeof(typeof(T))</c></b>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="address"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public T[] ReadArray<T>(long address, int count) where T : struct
         {
             int typeSize = Marshal.SizeOf(typeof(T));
@@ -217,8 +234,8 @@ namespace Avaritis.Memory
         }
 
         /// <summary>
-        /// Generic read array method. With this method you
-        /// can read an array from memory.
+        /// Generic read array method.
+        /// Reads an array of structs from memory.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="address"></param>
@@ -227,7 +244,7 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public T[] ReadArray<T>(long address, int count, int typeSize) where T : struct
         {
-            if (access == Access.Read || access == Access.AllAccess)
+            if (access == Access.Read || access == Access.ReadAndWrite)
             {
                 int arraySize = count * typeSize;
 
@@ -270,7 +287,7 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public string ReadString(long address, int count, Encoding encoding)
         {
-            if (access == Access.Read || access == Access.AllAccess)
+            if (access == Access.Read || access == Access.ReadAndWrite)
             {
                 return encoding.GetString(ReadArray<byte>(address, count, 1));
             }
@@ -294,7 +311,7 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public bool Write(long address, void* buffer, int size)
         {
-            if (access == Access.Write || access == Access.AllAccess)
+            if (access == Access.Write || access == Access.ReadAndWrite)
                 return Kernel32.WriteProcessMemory(hProcess, new IntPtr(address), buffer, size, null);
             else
                 throw new InvalidAccessException("Can not write with Access.Read");
@@ -309,7 +326,7 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public bool Write<T>(long address, T data) where T : struct
         {
-            if (access == Access.Write || access == Access.AllAccess)
+            if (access == Access.Write || access == Access.ReadAndWrite)
             {
                 int size = Marshal.SizeOf(typeof(T));
                 IntPtr ptr = Marshal.AllocHGlobal(size);
@@ -333,7 +350,7 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public bool WriteArray<T>(long address, T[] array) where T : struct
         {
-            if (access == Access.Write || access == Access.AllAccess)
+            if (access == Access.Write || access == Access.ReadAndWrite)
             {
                 if (array == null || array.Length == 0)
                     return false;
@@ -384,7 +401,7 @@ namespace Avaritis.Memory
         /// <returns></returns>
         public bool WriteString(long address, string text, Encoding encoding)
         {
-            if (access == Access.Write || access == Access.AllAccess)
+            if (access == Access.Write || access == Access.ReadAndWrite)
             {
                 return WriteArray(address, encoding.GetBytes(text));
             }
@@ -395,40 +412,19 @@ namespace Avaritis.Memory
         }
 
         #endregion
-
-        #region Implemented methods
-
-        /// <summary>
-        /// Closes the Process handle.
-        /// </summary>
-        public void Dispose()
-        {
-            if (!this.Disposed)
-            {
-                if (hProcess != IntPtr.Zero)
-                    Kernel32.CloseHandle(hProcess);
-
-                this.hWnd = IntPtr.Zero;
-                this.hProcess = IntPtr.Zero;
-
-                this.Disposed = true;
-            }
-        }
-
-        #endregion
     }
 
     /// <summary>
     /// This enum specifies the access level used
     /// in the ProcessMemory class.
     /// 
-    /// AllAccess grants access for both reading and writing to memory.
+    /// ReadAndWrite grants access for both reading and writing to memory.
     /// Read only grants access for reading to memory.
     /// Write only grants access for writing to memory.
     /// </summary>
     public enum Access
     {
-        AllAccess,
+        ReadAndWrite,
         Read,
         Write
     }

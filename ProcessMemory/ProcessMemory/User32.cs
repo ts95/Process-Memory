@@ -3,15 +3,15 @@ using System.Runtime.InteropServices;
 
 namespace Avaritis.Memory
 {
-    public class User32
+    internal class User32
     {
         [DllImport("User32.dll")]
-        public static extern IntPtr FindWindow(
-            string lpClassName,
-            string lpWindowName);
+        internal static extern IntPtr FindWindowW(
+            [MarshalAs(UnmanagedType.LPWStr)] string lpClassName,
+            [MarshalAs(UnmanagedType.LPWStr)] string lpWindowName);
 
         [DllImport("User32.dll")]
-        public static unsafe extern int GetWindowThreadProcessId(
+        internal static unsafe extern int GetWindowThreadProcessId(
             IntPtr hWnd,
             int* lpdwProcessId);
     }
