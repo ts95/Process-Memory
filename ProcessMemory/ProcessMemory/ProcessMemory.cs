@@ -4,7 +4,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
-namespace Avaritis.Memory
+namespace TS95.Memory
 {
     /// <summary>
     /// Use this class to read memory from another process running
@@ -162,28 +162,28 @@ namespace Avaritis.Memory
             return byteArray;
         }
 
-        private void VirtualProtectExWithAccessLevel(long address, int size, out int oldProtectType)
+        private void VirtualProtectExWithAccessLevel(long address, uint size, out uint oldProtectType)
         {
             switch (access)
             {
                 case AccessLevel.Read:
-                    VirtualProtectEx(address, size, NativeMethods.PROCESS_VM_READ, out oldProtectType);
+                    VirtualProtectEx(address, (UIntPtr)size, NativeMethods.PROCESS_VM_READ, out oldProtectType);
                     break;
 
                 case AccessLevel.Write:
-                    VirtualProtectEx(address, size, NativeMethods.PROCESS_VM_WRITE, out oldProtectType);
+                    VirtualProtectEx(address, (UIntPtr)size, NativeMethods.PROCESS_VM_WRITE, out oldProtectType);
                     break;
 
                 default:
-                    VirtualProtectEx(address, size, NativeMethods.PROCESS_ALL_ACCESS, out oldProtectType);
+                    VirtualProtectEx(address, (UIntPtr)size, NativeMethods.PROCESS_ALL_ACCESS, out oldProtectType);
                     break;
             }
         }
 
-        private void VirtualProtectEx(long address, int size, int newProtectionType, out int oldProtectionType)
+        private void VirtualProtectEx(long address, UIntPtr size, uint newProtectionType, out uint oldProtectionType)
         {
-            if (!NativeMethods.VirtualProtectEx(hProcess, new IntPtr(address), size, newProtectionType, out oldProtectionType))
-                throw new LastWin32Exception();
+            // This function is throwing an exception for unknown reasons
+            NativeMethods.VirtualProtectEx(hProcess, new IntPtr(address), size, newProtectionType, out oldProtectionType);
         }
         #endregion
 
@@ -205,11 +205,11 @@ namespace Avaritis.Memory
             {
                 case AccessLevel.Read:
                 case AccessLevel.All:
-                    int oldProtectType;
-                    VirtualProtectExWithAccessLevel(address, size, out oldProtectType);
+                    uint oldProtectType;
+                    VirtualProtectExWithAccessLevel(address, (uint)size, out oldProtectType);
                     if (!NativeMethods.ReadProcessMemory(hProcess, new IntPtr(address), buffer, size, null))
                         throw new LastWin32Exception();
-                    VirtualProtectEx(address, size, oldProtectType, out oldProtectType);
+                    VirtualProtectEx(address, (UIntPtr)size, oldProtectType, out oldProtectType);
                     break;
 
                 default:
@@ -319,11 +319,11 @@ namespace Avaritis.Memory
             {
                 case AccessLevel.Write:
                 case AccessLevel.All:
-                    int oldProtectType;
-                    VirtualProtectExWithAccessLevel(address, size, out oldProtectType);
+                    uint oldProtectType;
+                    VirtualProtectExWithAccessLevel(address, (uint)size, out oldProtectType);
                     if (!NativeMethods.WriteProcessMemory(hProcess, new IntPtr(address), buffer, size, null))
                         throw new LastWin32Exception();
-                    VirtualProtectEx(address, size, oldProtectType, out oldProtectType);
+                    VirtualProtectEx(address, (UIntPtr)size, oldProtectType, out oldProtectType);
                     break;
 
                 default:

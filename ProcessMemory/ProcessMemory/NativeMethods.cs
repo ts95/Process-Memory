@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Avaritis.Memory
+namespace TS95.Memory
 {
     internal class NativeMethods
     {
         #region Kernel32
 
-        public const int PROCESS_ALL_ACCESS = 0x1F0FFF;
-        public const int PROCESS_VM_READ = 0x0010;
-        public const int PROCESS_VM_WRITE = 0x0020;
+        public const uint PROCESS_ALL_ACCESS = 0x1F0FFF;
+        public const uint PROCESS_VM_READ = 0x0010;
+        public const uint PROCESS_VM_WRITE = 0x0020;
 
         [DllImport("Kernel32.dll")]
         internal static unsafe extern bool ReadProcessMemory(
@@ -29,7 +29,7 @@ namespace Avaritis.Memory
 
         [DllImport("Kernel32.dll")]
         internal static extern IntPtr OpenProcess(
-            int dwDesiredAccess,
+            uint dwDesiredAccess,
             bool bInheritHandle,
             int dwProcessId);
 
@@ -41,9 +41,9 @@ namespace Avaritis.Memory
         internal static extern bool VirtualProtectEx(
             IntPtr hProcess,
             IntPtr lpAdress,
-            int dwSize,
-            int newProtectionType,
-            out int oldProtectionType);
+            UIntPtr dwSize,
+            uint newProtectionType,
+            out uint oldProtectionType);
 
         #endregion
 

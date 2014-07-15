@@ -1,6 +1,6 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Avaritis.Memory;
+using TS95.Memory;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 

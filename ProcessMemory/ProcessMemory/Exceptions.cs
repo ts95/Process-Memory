@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Avaritis.Memory
+namespace TS95.Memory
 {
     [Serializable]
     internal class InvalidAccessException : Exception

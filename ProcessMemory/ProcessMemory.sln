@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
+# Visual Studio Express 2013 for Windows Desktop
 VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessMemory", "ProcessMemory\ProcessMemory.csproj", "{17C86213-6549-4BD9-9720-1ED16CFA1DB3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessMemoryTests", "ProcessMemoryTests\ProcessMemoryTests.csproj", "{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication", "ConsoleApplication\ConsoleApplication.csproj", "{3E35C672-9764-4D8E-A808-1748093FF546}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB28F39F-68DB-4314-AB47-FBBB6FF7EA0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E35C672-9764-4D8E-A808-1748093FF546}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E35C672-9764-4D8E-A808-1748093FF546}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E35C672-9764-4D8E-A808-1748093FF546}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E35C672-9764-4D8E-A808-1748093FF546}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
